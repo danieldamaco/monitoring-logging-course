@@ -1,0 +1,29 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: Petclinic Alerts
+    folder: Alerts
+    interval: 1m
+    rules:
+      - uid: error-check
+        title: Error logs en Loki
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: Loki
+            model:
+              editorMode: code
+              expr: |
+                count_over_time({job="petclinic"} |= "ERROR" [5m]) > 0
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+        noDataState: NoData
+        execErrState: Error
+        annotations:
+          summary: "Errores encontrados en logs"
+        labels:
+          severity: critical

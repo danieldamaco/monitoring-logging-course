@@ -1,0 +1,63 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus:/etc/prometheus
+    command: #Sirve para decirle al contendor que use mi archivo yml en vez de default. 
+      - '--config.file=/etc/prometheus/prometheus.yml'
+  
+  spring-app-jmx:
+    build:
+      context: ./webapp
+      dockerfile: ./Dockerfile
+    container_name: spring_app_jmx
+    volumes:
+      - ./webapp/petclinic.log:/var/log/petclinic.log
+    ports:
+      - "8080:8080"   # Web app Spring Boot
+      - "9404:9404"   # JMX Exporter para Prometheu
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    depends_on:
+      - prometheus
+      - loki
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - DS_PROMETHEUS=Prometheus
+   
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/loki-config.yaml
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml
+      - loki_data:/wal
+
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: promtail
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/promtail.yaml
+      - ./webapp/petclinic.log:/var/log/petclinic.log
+
+    command: -config.file=/etc/promtail/promtail.yaml
+    depends_on:
+      - loki
+
+volumes:
+  grafana_data:
+  loki_data:
+
